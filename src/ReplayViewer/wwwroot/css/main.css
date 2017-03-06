@@ -1,0 +1,156 @@
+#map {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+
+.leaflet-div-icon {
+	background: none!important;
+	border: none!important;
+}
+
+.in-veh {
+	display: none;
+}
+
+.unit-player {
+	position: absolute;
+	height: 15px;
+	width: 15px;
+	background-repeat: no-repeat;
+}
+
+.unit-dead {
+	opacity: 0.3;
+}
+
+.unit-player-east {
+	background-image: url('/images/red.png');
+}
+
+.unit-player-west {
+	background-image: url('/images/blue.png');
+}
+
+.unit-player-guer {
+	background-image: url('/images/green.png');
+}
+
+.unit-player-logic, .unit-player-civi, .unit-player-civ {
+	background-image: url('/images/white.png');
+}
+
+.unit-player-dead {
+	background-image: url('/images/black.png');
+}
+
+.peaks{
+	display: none;
+}
+
+.geo {
+	position: absolute;
+	width: 300px;
+}
+
+.NameCityCapital, .NameCity{
+	font-weight: 700;
+}
+
+.NameLocal{
+	color: #A65F00;
+}
+
+.Hill{
+	font-style: italic;
+}
+
+.NameMarine {
+	font-style: italic;
+	color: #006EFF;
+}
+
+.VegetationFir {
+	font-style: italic;
+	color: #048A05;
+}
+
+.unit-name {
+	position: absolute;
+	top: -1px;
+	left: 19px;
+	font-weight: bold;
+	width: 300px;
+}
+
+.unit-name-east {
+	color: #FF0000;
+	text-shadow: 1px 1px 1px #fff, 0 0 1em #000;
+}
+
+.unit-name-west {
+	color: #0235FF;
+	text-shadow: 1px 1px 1px #fff, 0 0 1em #000;
+}
+
+.unit-name-guer {
+	color: #009800;
+	text-shadow: 1px 1px 1px #fff, 0 0 1em #000;
+}
+
+.unit-name-dead {
+	color: black;
+}
+
+.unit-name-logic, .unit-name-civi, .unit-name-civ {
+	color: #FFFFFF;
+	text-shadow: 1px 1px 1px black, 0 0 1em black;
+}
+
+footer.lp {
+  position: fixed;
+  right: 0;
+  left: 0;
+  bottom: 10px;
+}
+
+.lp .transport {
+  margin: 0 auto;
+  width:820px;
+}
+
+.lp .navbar {
+  margin-bottom: 0;
+}
+
+.lp .navbar-inner {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.menu {
+	position:absolute;
+	top:0;
+	right:0;
+	width:250px;
+	padding: 7px;
+	background: white;
+	border-left: 2px solid #dddddd;
+	border-bottom: 2px solid #dddddd;
+	text-align: center;
+}
+
+.events {
+	position:absolute;
+	bottom:0;
+	left:0;
+	width:500px;
+	height: 150px;
+	background: white;
+	padding: 7px;
+	border-right: 2px solid #dddddd;
+	border-top: 2px solid #dddddd;
+	overflow: auto;
+}

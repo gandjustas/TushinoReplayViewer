@@ -1,0 +1,96 @@
+﻿<html>
+<head>
+    <title>Tushino Online Replay Viewer</title>
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+    <link rel="stylesheet" href="/css/main.css" />
+	<link href="/css/bootstrap-combined.min.css" rel="stylesheet" type="text/css" />
+	<link href="//netdna.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.css" rel="stylesheet">
+	<link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+	<script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+	<script src="//cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script> 
+    <script src="/js/bootstrap.min.js"></script>  
+    <script src="/js/veh_a3.js"></script>  
+    <script src="/js/main.js"></script>
+</head>
+<body>
+    <div id="map" style="width:100%;height:100%;background-color:#FFFFFF;"></div>
+	<div class="menu">
+		<div class="info">
+			<p><b>Информация</b></p>
+			<p>Название: <b class="name-replay"></b></p>
+			<p>Дата: <b class="date-replay"></b></p>
+		</div>
+		<hr>
+		<div class="btns">
+			<p><b>Настройки</b></p>
+			<p><input type="checkbox" name="showdead" checked> Показывать убитых</p>
+			<p><input type="checkbox" name="geo" checked> Показывать гео-объекты</p>
+			<p><input type="checkbox" name="peaks"> Показывать высоты</p>
+			<p><input type="checkbox" name="markers" checked> Показывать маркеры</p>
+		</div>
+		<hr>
+		<div class="coords">
+			<p><b>Координаты</b></p>
+			<p>X: <span class="coordx">0</span> Y: <span class="coordy">0</span></p>
+		</div>
+		<hr>
+		<div class="sides_players">
+			<p><b>Силы сторон</b></p>
+			<p class="players_cnt"></p>
+		</div>
+		<hr>
+		<div class="mps" style="display:none;">
+			<a id="multi" href="#" class="btn" title="Включить совместный просмотр">Включить совместный просмотр</a>
+			<b>Ссылка для просмотра:</b>
+			<input type="text" id="srvhash" readonly>
+		</div>
+	</div>
+	<div class="events">
+		<ul class="nav nav-tabs">
+			<li class="active"><a href="#kills" data-toggle="tab">Убийства</a></li>
+			<li><a href="#names" data-toggle="tab">Смена ников</a></li>
+			<li><a href="#messages" data-toggle="tab">Системные сообщения</a></li>
+		</ul>
+		<div class="tab-content">
+			<div class="tab-pane fade active in" id="kills"></div>
+			<div class="tab-pane fade" id="names"></div>
+			<div class="tab-pane fade" id="messages"></div>
+		</div>
+	</div>
+	<footer class="lp">
+	  <div class="transport">
+		<div class="navbar">
+		  <div class="navbar-inner">
+			<ul class="nav">
+			  <li>
+				<a id="play-pause" href="#"  title="Старт/пауза воспроизведения реплея"><i id="play-pause-icon" class="fa fa-pause fa-lg"></i> <span>Пауза</span></a>
+			  </li>
+			<li><div id="slider" style="width:415px;margin-top:13px" title="Перемотка"></div>
+			</ul>
+			<ul class="nav pull-right">
+			</li>
+			  <li>
+				<div class="btn-group speed-btn" title="Скорость воспроизведения">
+					<button type="button" class="btn" rel="0.5">0.5x</button>
+					<button type="button" class="btn active" rel="1">1x</button>
+					<button type="button" class="btn" rel="2">2x</button>
+					<button type="button" class="btn" rel="4">4x</button>
+					<button type="button" class="btn" rel="8">8x</button>
+				</div>
+			  </li>
+			  <li class="ctrl">
+				<a id="time-replay" href="#" title="Время прошедшее с начала миссии">00:00:00</a>
+			  </li>
+			</ul>
+		  </div>
+		</div>
+	  </div>
+	</footer>	
+    <!-- Yandex.Metrika counter -->
+    <script type="text/javascript"> (function (d, w, c) { (w[c] = w[c] || []).push(function() { try { w.yaCounter43251229 = new Ya.Metrika({ id:43251229, clickmap:true, trackLinks:true, accurateTrackBounce:true }); } catch(e) { } }); var n = d.getElementsByTagName("script")[0], s = d.createElement("script"), f = function () { n.parentNode.insertBefore(s, n); }; s.type = "text/javascript"; s.async = true; s.src = "https://mc.yandex.ru/metrika/watch.js"; if (w.opera == "[object Opera]") { d.addEventListener("DOMContentLoaded", f, false); } else { f(); } })(document, window, "yandex_metrika_callbacks"); </script> <noscript><div><img src="https://mc.yandex.ru/watch/43251229" style="position:absolute; left:-9999px;" alt="" /></div></noscript> 
+    <!-- /Yandex.Metrika counter -->
+</body>
+</html>

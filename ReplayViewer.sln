@@ -12,7 +12,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "PboTools", "src\PboTools\PboTools.xproj", "{4C21A67C-D01B-4137-B779-2D136B96735A}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "ReplayViewerTest", "ReplayViewerTest\ReplayViewerTest.xproj", "{2AFBC8C8-2DAD-4528-9983-B9BF11AEFAF9}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "ReplayViewer", "src\ReplayViewer\ReplayViewer.xproj", "{BDBCF647-EB17-4209-815F-FBA7D16837F0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,16 +24,16 @@ Global
 		{4C21A67C-D01B-4137-B779-2D136B96735A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4C21A67C-D01B-4137-B779-2D136B96735A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4C21A67C-D01B-4137-B779-2D136B96735A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2AFBC8C8-2DAD-4528-9983-B9BF11AEFAF9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2AFBC8C8-2DAD-4528-9983-B9BF11AEFAF9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2AFBC8C8-2DAD-4528-9983-B9BF11AEFAF9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2AFBC8C8-2DAD-4528-9983-B9BF11AEFAF9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BDBCF647-EB17-4209-815F-FBA7D16837F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BDBCF647-EB17-4209-815F-FBA7D16837F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BDBCF647-EB17-4209-815F-FBA7D16837F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BDBCF647-EB17-4209-815F-FBA7D16837F0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{4C21A67C-D01B-4137-B779-2D136B96735A} = {0247184C-4F59-45AE-93C9-561CDDAA3C09}
-		{2AFBC8C8-2DAD-4528-9983-B9BF11AEFAF9} = {0247184C-4F59-45AE-93C9-561CDDAA3C09}
+		{BDBCF647-EB17-4209-815F-FBA7D16837F0} = {0247184C-4F59-45AE-93C9-561CDDAA3C09}
 	EndGlobalSection
 EndGlobal
