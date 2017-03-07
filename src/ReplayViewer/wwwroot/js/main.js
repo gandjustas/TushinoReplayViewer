@@ -66,14 +66,37 @@ var Replay = function (array) {
     this.deadLine = [];
     this.initInfo();
     this.initTriggers();
+    
     this.sec = 1;
     this.Players = [];
-    this.initPlayers();
-    this.checkChangesNames();
-    this.initObjNames();
+    this.processFrame(this.log[1]);
+
+    this.killBoard =  $('#kills');
+    this.killBoard =  $('#kills');
+    this.killBoard =  $('#kills');
+
     this.initJS();
     this.start();
 };
+
+Replay.prototype.rewind = function (s) {
+    var k = this.sec;
+    if (s < this.sec) {
+        $('#kills').text('');
+        $('#names').text('');
+        $('#messages').text('');
+        this.Players.forEach(function (p, index, arr) {
+            if (p.marker) map.removeLayer(p.marker);                
+        });
+        this.Players = [];
+        k=1;
+    }
+    for (var i = k; i < s; i++) {
+        this.processFrame(this.log[i]);
+    }
+    this.updateMarkers();
+    this.sec = s;
+}
 
 Replay.prototype.initInfo = function () {
     this.ReplayInfo = this.log[0];
@@ -124,10 +147,7 @@ Replay.prototype.initJS = function () {
         min: 10,
         max: parent.log.length,
         slide: function (event, ui) {
-            $('#kills').text('');
-            $('#names').text('');
-            $('#messages').text('');
-            parent.sec = ui.value;
+            parent.rewind(ui.value);
         }
     });
     $(document).tooltip();
@@ -135,24 +155,23 @@ Replay.prototype.initJS = function () {
 
 Replay.prototype.tick = function () {
     if (this.pause) return;
-    if (typeof this.log[this.sec] == 'undefined') {
+    var frame = this.log[this.sec];
+    if (frame == 'undefined') {
         this.toLog($('#messages'), this.timeSecToStr(this.log[this.sec - 1][0]) + ' : КОНЕЦ', 0);
         return;
     }
     this.deadLine.forEach(function (line, index, arr) {
         map.removeLayer(line);
     });
-    if (this.log[this.sec][0] == -1) {
+    if (frame[0] == -1) {
         this.toLog($('#messages'), this.timeSecToStr(this.log[this.sec - 1][0]) + ' : ' + this.log[this.sec][1], 0);
     } else {
         var parent = this;
-        $('#time-replay').text(this.timeSecToStr(this.log[this.sec][0]));
+        $('#time-replay').text(this.timeSecToStr(frame[0]));
         $('#slider').slider("value", parent.sec);
-        this.initPlayers();
+        this.processFrame(frame);
+        this.updateMarkers();
         this.updatePlayersCount();
-        this.checkChangesNames();
-        this.checkKills();
-        this.moveMarkers();
     }
 
     if (this.hideDead) {
@@ -274,47 +293,10 @@ Replay.prototype.timeSecToStr = function (data) {
 }
 
 
-
-Replay.prototype.checkChangesNames = function () {
-    var parent = this;
-    this.log[this.sec][1].forEach(function (message, index, arr) {
-        if (message[0] == 3) {
-            parent.Players[message[1]].name = message[3];
-            parent.toLog($('#names'), parent.timeSecToStr(parent.log[parent.sec][0]) + ' : ' + message[2] + ' ==> ' + message[3], 0);
-        }
-    });
-}
-Replay.prototype.checkKills = function () {
-    var parent = this;
-    this.log[this.sec][1].forEach(function (message, index, arr) {
-        if (message[0] == 4) {
-            if (message[2] == 0 || message[2] == message[3]) {
-                parent.toLog($('#kills'), parent.timeSecToStr(message[1]) + ' : ' + parent.Players[message[3]].name + ' умер', 1);
-            } else {
-                var kill = [];
-                parent.Players[message[3]].dead = true;
-                if (parent.Players[message[2]].side == parent.Players[message[3]].side) {
-                    parent.toLog($('#kills'), parent.timeSecToStr(message[1]) + ' : ' + parent.Players[message[2]].name + ' убил ' + parent.Players[message[3]].name + ' с помощью ' + message[4] + ' с расстояния ' + message[6] + ' <b style="color:red">ТИМКИЛЛ</b>', 1);
-                } else {
-                    parent.toLog($('#kills'), parent.timeSecToStr(message[1]) + ' : ' + parent.Players[message[2]].name + ' убил ' + parent.Players[message[3]].name + ' с помощью ' + message[4] + ' с расстояния ' + message[6], 1);
-                }
-                parent.log[parent.sec].forEach(function (player, index, arr) {
-                    if (player[0] == message[2]) {
-                        kill['killer'] = player;
-                    } else if (player[0] == message[3]) {
-                        kill['victim'] = player;
-                    }
-                });
-                parent.deadLine.push(parent.drawShot(kill['killer'], kill['victim']));
-            }
-        }
-    });
-}
-
-Replay.prototype.moveMarkers = function () {
+Replay.prototype.processPlayers = function (frame) {
     var that = this;
     var dict = {};
-    that.log[this.sec].forEach(function (p, index, arr) {
+    frame.forEach(function (p, index, arr) {
         if (index < 2) return;
         var id = p[0];
         dict[id] = true;
@@ -329,8 +311,22 @@ Replay.prototype.moveMarkers = function () {
         } else {
             player.dead = false;
         }
+        player.azimuth = p[4];
+        player.x = p[1];
+        player.y = p[2];
+    });
 
-        var azimut = p[4];
+    that.Players.forEach(function (p, index, arr) {
+        if (!dict[index]) {
+            if(p.marker) map.removeLayer(p.marker);
+            delete arr[index];
+        }
+    });
+}
+
+Replay.prototype.updateMarkers = function () {
+    var that = this;
+    this.Players.forEach(function (player, index, arr) {
         var classunit = (player.dead) ? 'dead' : player.side;
         var globclass = (player.dead) ? 'unit-dead' : 'unit';
         var name = classNames[player.name] || player.name;
@@ -350,7 +346,7 @@ Replay.prototype.moveMarkers = function () {
             iconSize: 15,
             iconAnchor: [7, 7],
             html: '<span class="' + globclass + '">' +
-            '<span class="unit-player unit-player-' + classunit + '" style="transform: rotate(' + p[4] + 'deg);"></span>' +
+            '<span class="unit-player unit-player-' + classunit + '" style="transform: rotate(' + player.azimuth + 'deg);"></span>' +
             '<span class="unit-name unit-name-' + classunit + '">' + name + '</span>' +
             '</span>'
         });
@@ -360,26 +356,23 @@ Replay.prototype.moveMarkers = function () {
             }
         html += 'Здоровье: <div class="progress progress-danger"><div class="bar" style="width:'+Math.round((1-p[5])*100)+'%">'+Math.round((1-p[5])*100)+'%</div></div>';*/
         if (typeof player.marker == 'object') {
-            player.marker.setLatLng(map.unproject([p[1], MapSize[1] - p[2]], map.getMaxZoom())).setIcon(icon)/*.bindPopup(html)*/.update();
+            player.marker.setLatLng(map.unproject([player.x, MapSize[1] - player.y], map.getMaxZoom())).setIcon(icon)/*.bindPopup(html)*/.update();
         } else {
-            player.marker = L.marker(map.unproject([p[1], MapSize[1] - p[2]], map.getMaxZoom()), {
+            player.marker = L.marker(map.unproject([player.x, MapSize[1] - player.y], map.getMaxZoom()), {
                 icon: icon
             }).addTo(map);
-        }
-    });
-
-    that.Players.forEach(function (p, index, arr) {
-        if (!dict[index]) {
-            if(p.marker) map.removeLayer(p.marker);
-            delete arr[index];
-        }
+        }    
     });
 }
+Replay.prototype.processFrame = function (frame) {
+    this.processEvents(frame[1]);
+    this.processPlayers(frame)
+}
 
-Replay.prototype.initPlayers = function () {
+Replay.prototype.processEvents = function (events) {
     //var plrs = new Array([]);
     var parent = this;
-    this.log[this.sec][1].forEach(function (message, index, arr) {
+    events.forEach(function (message, index, arr) {
         var player = [];
         if (message[0] == 1) {
             var id = message[1];
@@ -403,7 +396,24 @@ Replay.prototype.initPlayers = function () {
                 side: 'CIV',
                 icon: message[3],
             }
+        } else if (message[0] == 3) {
+            parent.Players[message[1]].name = message[3];
+            parent.toLog($('#names'), parent.timeSecToStr(parent.log[parent.sec][0]) + ' : ' + message[2] + ' ==> ' + message[3], 0);
+        } else if (message[0] == 4) {
+            if (message[2] == 0 || message[2] == message[3]) {
+                parent.toLog(parent.killBoard, parent.timeSecToStr(message[1]) + ' : ' + parent.Players[message[3]].name + ' умер', 1);
+            } else {
+                var kill = [];
+                parent.Players[message[3]].dead = true;
+                if (parent.Players[message[2]].side == parent.Players[message[3]].side) {
+                    parent.toLog(parent.killBoard, parent.timeSecToStr(message[1]) + ' : ' + parent.Players[message[2]].name + ' убил ' + parent.Players[message[3]].name + ' с помощью ' + message[4] + ' с расстояния ' + message[6] + ' <b style="color:red">ТИМКИЛЛ</b>', 1);
+                } else {
+                    parent.toLog(parent.killBoard, parent.timeSecToStr(message[1]) + ' : ' + parent.Players[message[2]].name + ' убил ' + parent.Players[message[3]].name + ' с помощью ' + message[4] + ' с расстояния ' + message[6], 1);
+                }
+                parent.deadLine.push(parent.drawShot(parent.Players[message[2]], parent.Players[message[3]]));
+            }
         }
+
     });
     //console.log(this.Players);
     //this.Players.push(plrs);
@@ -414,7 +424,7 @@ Replay.prototype.drawShot = function (killer, victim) {
         var victim = killer;
     }
     var colr = '';
-    switch (this.Players[killer[0]].side) {
+    switch (killer.side) {
         case "EAST":
             colr = 'red';
             break;
@@ -430,7 +440,7 @@ Replay.prototype.drawShot = function (killer, victim) {
         default:
             colr = 'red';
     }
-    return L.polyline([map.unproject([killer[1], MapSize[1] - killer[2]], map.getMaxZoom()), map.unproject([victim[1], MapSize[1] - victim[2]], map.getMaxZoom())], { color: colr, weight: 3, opacity: 0.7 }).addTo(map);
+    return L.polyline([map.unproject([killer.x, MapSize[1] - killer.y], map.getMaxZoom()), map.unproject([victim.x, MapSize[1] - victim.y], map.getMaxZoom())], { color: colr, weight: 3, opacity: 0.7 }).addTo(map);
 }
 
 
@@ -452,16 +462,15 @@ Replay.prototype.initTriggers = function () {
 };
 
 Replay.prototype.updatePlayersCount = function () {
-    var sides = [];
+    var sides = {};
     this.Players.forEach(function (player, index, arr) {
-        if (typeof sides[player.side] == 'undefined') {
-            if (player.side == 'EAST' || player.side == 'WEST' || player.side == 'GUER') {
-                sides[player.side] = 0;
-            }
-        } else {
-            if (!player.dead && typeof sides[player.side] == 'number' && player.icon == 'Man' && player.name.length) {
-                //console.log(player);
-                sides[player.side]++;
+        if (player.side == 'EAST' || player.side == 'WEST' || player.side == 'GUER') {
+            if (!player.dead  && player.icon == 'Man' && player.name.length) {
+                if (!sides[player.side]) {
+                    sides[player.side] = 1;
+                } else {
+                    sides[player.side] ++;
+                }
             }
         }
     });
