@@ -1,4 +1,4 @@
-var Sizes = { "altis": [30721, 30721], "bootcamp_acr": [3843, 3847], "bornholm": [22529, 22529], "chernarus": [15361, 15361], "chernarus_summer": [15361, 15361], "desert_e": [2049, 2049], "intro": [5121, 5121], "kunduz": [5124, 5129], "mountains_acr": [6410, 6403], "porto": [5121, 5121], "provinggrounds_pmc": [2054, 2049], "shapur_baf": [2049, 2049], "stratis": [8193, 8193], "takistan": [12801, 12803], "woodland_acr": [7683, 7682], "zargabad": [8193, 8196], "smd_sahrani_a3": [20481, 20481], "utes": [5121, 5121], "mbg_celle2": [12292, 12298], "fata": [5119, 5119] };
+var Sizes = { "altis": [30721, 30721], "bootcamp_acr": [3843, 3847], "bornholm": [22529, 22529], "chernarus": [15361, 15361], "chernarus_summer": [15361, 15361], "desert_e": [2049, 2049], "intro": [5121, 5121], "kunduz": [5124, 5129], "mountains_acr": [6410, 6403], "porto": [5121, 5121], "provinggrounds_pmc": [2054, 2049], "shapur_baf": [2049, 2049], "stratis": [8193, 8193], "takistan": [12801, 12803], "woodland_acr": [7683, 7682], "zargabad": [8193, 8196], "smd_sahrani_a3": [20481, 20481], "utes": [5121, 5121], "mbg_celle2": [12292, 12298], "fata": [5119, 5119], "napf": [20481,20481] };
 var Peaks = {};
 var MapName
 var MapSize
@@ -53,12 +53,14 @@ var Sides = [
 
 
 
-var Replay = function (array) {
+var Replay = function (replayUrl, array) {
     if (array.length < 2) {
         this.toLog($('#messages'), this.timeSecToStr(0) + ' Реплей пуст.', 0);
         alert('Реплей пуст.');
         return;
     }
+
+    this.replayUrl = replayUrl;
     this.log = array;
     this.speed = 1;
     this.pause = false;
@@ -66,18 +68,37 @@ var Replay = function (array) {
     this.deadLine = [];
     this.initInfo();
     this.initTriggers();
-    
+
     this.sec = 1;
     this.Players = [];
     this.processFrame(this.log[1]);
 
     this.killBoard =  $('#kills');
-    this.killBoard =  $('#kills');
-    this.killBoard =  $('#kills');
 
     this.initJS();
     this.start();
+
 };
+
+Replay.prototype.getStateUrl = function () {
+    var x = {
+        p: this.replayUrl,
+        t: this.sec
+    };
+    if (this.pause) x.pause = 1;
+
+    var s = [];
+    for (var k in x) {
+        s.push(k + '=' + x[k]);
+    }
+
+    return s.join('&');
+}
+
+Replay.prototype.setWindowUrl = function () {
+    window.history.replaceState(null, "Tushino Online Replay Viewer", '?' + this.getStateUrl());
+
+}
 
 Replay.prototype.rewind = function (s) {
     var k = this.sec;
@@ -86,7 +107,7 @@ Replay.prototype.rewind = function (s) {
         $('#names').text('');
         $('#messages').text('');
         this.Players.forEach(function (p, index, arr) {
-            if (p.marker) map.removeLayer(p.marker);                
+            if (p.marker) map.removeLayer(p.marker);
         });
         this.Players = [];
         k=1;
@@ -96,6 +117,10 @@ Replay.prototype.rewind = function (s) {
     }
     this.updateMarkers();
     this.sec = s;
+
+    $('#time-replay').text(this.timeSecToStr(this.log[s][0]));
+    $('#slider').slider("value", this.sec);
+    this.setWindowUrl();
 }
 
 Replay.prototype.initInfo = function () {
@@ -137,11 +162,13 @@ Replay.prototype.initJS = function () {
         } else {
             parent.start();
         }
+        event.preventDefault();
     });
     $(document).on('click', '.speed-btn button', function () {
         $('.speed-btn button').removeClass('active');
         $(this).addClass('active');
         parent.speed = $(this).attr('rel');
+        event.preventDefault();
     });
     $('#slider').slider({
         min: 10,
@@ -156,7 +183,7 @@ Replay.prototype.initJS = function () {
 Replay.prototype.tick = function () {
     if (this.pause) return;
     var frame = this.log[this.sec];
-    if (frame == 'undefined') {
+    if (!frame) {
         this.toLog($('#messages'), this.timeSecToStr(this.log[this.sec - 1][0]) + ' : КОНЕЦ', 0);
         return;
     }
@@ -179,6 +206,8 @@ Replay.prototype.tick = function () {
     } else {
         $('.unit-dead').show();
     }
+
+    this.setWindowUrl();
 
     if (MP['server'].length == 0) {
         var parent = this;
@@ -204,6 +233,7 @@ Replay.prototype.stop = function () {
     $('#play-pause-icon').removeClass('fa-pause');
     $('#play-pause-icon').addClass('fa-play');
     $('#play-pause span').text('Старт');
+    this.setWindowUrl();
 }
 
 Replay.prototype.toLog = function (div, string, pos) {
@@ -330,7 +360,7 @@ Replay.prototype.updateMarkers = function () {
         var classunit = (player.dead) ? 'dead' : player.side;
         var globclass = (player.dead) ? 'unit-dead' : 'unit';
         var name = classNames[player.name] || player.name;
-        
+
         if (player.vehicleOrDriver) {
             if (player.icon == "Man") {
                 globclass += ' in-veh';
@@ -361,15 +391,15 @@ Replay.prototype.updateMarkers = function () {
             player.marker = L.marker(map.unproject([player.x, MapSize[1] - player.y], map.getMaxZoom()), {
                 icon: icon
             }).addTo(map);
-        }    
+        }
     });
 }
 Replay.prototype.processFrame = function (frame) {
-    this.processEvents(frame[1]);
+    this.processEvents(frame[0], frame[1]);
     this.processPlayers(frame)
 }
 
-Replay.prototype.processEvents = function (events) {
+Replay.prototype.processEvents = function (time, events) {
     //var plrs = new Array([]);
     var parent = this;
     events.forEach(function (message, index, arr) {
@@ -398,7 +428,9 @@ Replay.prototype.processEvents = function (events) {
             }
         } else if (message[0] == 3) {
             parent.Players[message[1]].name = message[3];
-            parent.toLog($('#names'), parent.timeSecToStr(parent.log[parent.sec][0]) + ' : ' + message[2] + ' ==> ' + message[3], 0);
+            if (time > 0) {
+                parent.toLog($('#names'), parent.timeSecToStr(time) + ' : ' + message[2] + ' ==> ' + message[3], 0);
+            }
         } else if (message[0] == 4) {
             if (message[2] == 0 || message[2] == message[3]) {
                 parent.toLog(parent.killBoard, parent.timeSecToStr(message[1]) + ' : ' + parent.Players[message[3]].name + ' умер', 1);
@@ -421,7 +453,7 @@ Replay.prototype.processEvents = function (events) {
 
 Replay.prototype.drawShot = function (killer, victim) {
     if (typeof victim == 'undefined') {
-        var victim = killer;
+        victim = killer;
     }
     var colr = '';
     switch (killer.side) {
@@ -496,7 +528,15 @@ Replay.prototype.updatePlayersCount = function () {
 }
 
 function loadReplay(qs) {
-    $.getJSON("/api/replay" + qs, null, function (data) {
+    var params = qs.substr(1).split("&").reduce(function (x, p) {
+        var pair = p.split('=');
+        x[pair[0]] = decodeURIComponent(pair[1]);
+        return x;
+    }, {});
+
+    $.ajax("/api/replay" + qs, { dataType: 'json' } )
+        .fail(function (jqXHR, textStatus, errorThrown) { alert(errorThrown) } )
+        .done(function (data,status, xhr) {
         MapName = data[0][0].toLowerCase();
         MapSize = Sizes[MapName];
 
@@ -516,7 +556,7 @@ function loadReplay(qs) {
         map.on('zoomend', function(e) {
             console.log(map.getZoom());
         });
-        
+
         map.on('click', function(e) {
             console.log(map.getMaxZoom());
         });
@@ -539,8 +579,9 @@ function loadReplay(qs) {
             $('.coordy').text(parseInt((MapSize[1] - point['y'])/*/100*/));
         });
 
-        replay = new Replay(data);
-
+        replay = new Replay(params.p,  data);
+        if (params.t) { replay.rewind(params.t) };
+        if (params.pause == 1) { replay.stop(); };
     })
 }
 
