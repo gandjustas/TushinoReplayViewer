@@ -13,7 +13,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.Extensions.Configuration;
 using System.Net.Http;
 
-namespace ReplayViewerTest.Controllers
+namespace ReplayViewer.Controllers
 {
     [Route("api/[controller]")]
     public class ReplayController : Controller
@@ -79,9 +79,16 @@ namespace ReplayViewerTest.Controllers
                             {
                                 blob.Properties.CacheControl = "public, max-age=31536000";
                                 blob.Properties.ContentType = "text/plain";
-                                await blob.UploadFromByteArrayAsync(f.FileContents, 0, f.FileContents.Length);
-                                await blob.SetPropertiesAsync();
-                                return RedirectPermanent(blob.Uri.ToString()); //File(f.FileContents, "text/plain");
+                                using(var s = new MemoryStream(f.FileContents.Length))
+                                using (var input = new StreamReader(new MemoryStream(f.FileContents)))
+                                using (var output = new StreamWriter(s))
+                                {
+                                    ReplayToJson.Normalize(input, output);
+                                    s.Seek(0, SeekOrigin.Begin);
+                                    await blob.UploadFromStreamAsync(s);
+                                    await blob.SetPropertiesAsync();
+                                    return RedirectPermanent(blob.Uri.ToString()); //File(f.FileContents, "text/plain");
+                                }
                             }
                         }
                     }

@@ -1,4 +1,4 @@
-var Sizes = { "altis": [30721, 30721], "bootcamp_acr": [3843, 3847], "bornholm": [22529, 22529], "chernarus": [15361, 15361], "chernarus_summer": [15361, 15361], "desert_e": [2049, 2049], "intro": [5121, 5121], "kunduz": [5124, 5129], "mountains_acr": [6410, 6403], "porto": [5121, 5121], "provinggrounds_pmc": [2054, 2049], "shapur_baf": [2049, 2049], "stratis": [8193, 8193], "takistan": [12801, 12803], "woodland_acr": [7683, 7682], "zargabad": [8193, 8196], "smd_sahrani_a3": [20481, 20481], "utes": [5121, 5121], "mbg_celle2": [12292, 12298], "fata": [5119, 5119], "napf": [20481,20481] };
+var Sizes = { "altis": [30721, 30721], "bootcamp_acr": [3843, 3847], "bornholm": [22529, 22529], "chernarus": [15361, 15361], "chernarus_summer": [15361, 15361], "desert_e": [2049, 2049], "intro": [5121, 5121], "kunduz": [5124, 5129], "mountains_acr": [6410, 6403], "porto": [5121, 5121], "provinggrounds_pmc": [2054, 2049], "shapur_baf": [2049, 2049], "stratis": [8193, 8193], "takistan": [12801, 12803], "woodland_acr": [7683, 7682], "zargabad": [8193, 8196], "smd_sahrani_a3": [20481, 20481], "utes": [5121, 5121], "mbg_celle2": [12292, 12298], "fata": [5119, 5119], "napf": [20481, 20481] };
 var Peaks = {};
 var MapName
 var MapSize
@@ -11,10 +11,10 @@ var MP = {
 };
 
 var Sides = [
-	"WEST",
-	"EAST",
-	"GUER",
-	"LOGIC"
+    "WEST",
+    "EAST",
+    "GUER",
+    "LOGIC"
 ];
 //var socket = io.connect('http://37.143.14.33:8080');
 
@@ -73,16 +73,15 @@ var Replay = function (replayUrl, array) {
     this.Players = [];
     this.processFrame(this.log[1]);
 
-    this.killBoard =  $('#kills');
+    this.killBoard = $('#kills');
 
     this.initJS();
     this.start();
 
 };
 
-Replay.prototype.getStateUrl = function () {
+Replay.prototype.getStateHash = function () {
     var x = {
-        p: this.replayUrl,
         t: this.sec
     };
     if (this.pause) x.pause = 1;
@@ -96,12 +95,17 @@ Replay.prototype.getStateUrl = function () {
 }
 
 Replay.prototype.setWindowUrl = function () {
-    window.history.replaceState(null, "Tushino Online Replay Viewer", '?' + this.getStateUrl());
+    var q = "?p=" + this.replayUrl;
+    if (q != document.location.search) {
+        window.history.replaceState(null, "Tushino Online Replay Viewer", q);
+    }
+
+    document.location.hash = this.getStateHash();
 
 }
 
 Replay.prototype.rewind = function (s) {
-    var k = this.sec;
+    var k = this.sec + 1;
     if (s < this.sec) {
         $('#kills').text('');
         $('#names').text('');
@@ -110,7 +114,7 @@ Replay.prototype.rewind = function (s) {
             if (p.marker) map.removeLayer(p.marker);
         });
         this.Players = [];
-        k=1;
+        k = 1;
     }
     for (var i = k; i < s; i++) {
         this.processFrame(this.log[i]);
@@ -171,10 +175,15 @@ Replay.prototype.initJS = function () {
         event.preventDefault();
     });
     $('#slider').slider({
-        min: 10,
+        min: 1,
         max: parent.log.length,
         slide: function (event, ui) {
             parent.rewind(ui.value);
+            if (parent.isFinished) {
+                parent.start();
+                parent.isFinished = false;
+            }
+
         }
     });
     $(document).tooltip();
@@ -185,6 +194,7 @@ Replay.prototype.tick = function () {
     var frame = this.log[this.sec];
     if (!frame) {
         this.toLog($('#messages'), this.timeSecToStr(this.log[this.sec - 1][0]) + ' : КОНЕЦ', 0);
+        this.isFinished = true;
         return;
     }
     this.deadLine.forEach(function (line, index, arr) {
@@ -239,12 +249,12 @@ Replay.prototype.stop = function () {
 Replay.prototype.toLog = function (div, string, pos) {
     if (pos) {
         $(div)
-			 .prepend($("<p></p>")
-			 .html(string));
+            .prepend($("<p></p>")
+                .html(string));
     } else {
         $(div)
-			 .append($("<p></p>")
-			 .html(string));
+            .append($("<p></p>")
+                .html(string));
     }
 }
 
@@ -286,10 +296,10 @@ Replay.prototype.drawBox = function (xy, s, angle, color) {
         y4 = cy + tmp_x4 * sin - tmp_y4 * cos;
     }
     return L.polygon([
-		map.unproject([x1, y1], map.getMaxZoom()),
-		map.unproject([x2, y2], map.getMaxZoom()),
-		map.unproject([x3, y3], map.getMaxZoom()),
-		map.unproject([x4, y4], map.getMaxZoom()),
+        map.unproject([x1, y1], map.getMaxZoom()),
+        map.unproject([x2, y2], map.getMaxZoom()),
+        map.unproject([x3, y3], map.getMaxZoom()),
+        map.unproject([x4, y4], map.getMaxZoom()),
     ], { color: color, stroke: false, fillOpacity: 0.7, className: 'map-marker' }).addTo(map);
 }
 
@@ -348,7 +358,7 @@ Replay.prototype.processPlayers = function (frame) {
 
     that.Players.forEach(function (p, index, arr) {
         if (!dict[index]) {
-            if(p.marker) map.removeLayer(p.marker);
+            if (p.marker) map.removeLayer(p.marker);
             delete arr[index];
         }
     });
@@ -497,11 +507,11 @@ Replay.prototype.updatePlayersCount = function () {
     var sides = {};
     this.Players.forEach(function (player, index, arr) {
         if (player.side == 'EAST' || player.side == 'WEST' || player.side == 'GUER') {
-            if (!player.dead  && player.icon == 'Man' && player.name.length) {
+            if (!player.dead && player.icon == 'Man' && player.name.length) {
                 if (!sides[player.side]) {
                     sides[player.side] = 1;
                 } else {
-                    sides[player.side] ++;
+                    sides[player.side]++;
                 }
             }
         }
@@ -527,67 +537,78 @@ Replay.prototype.updatePlayersCount = function () {
     $('.players_cnt').html(html);
 }
 
-function loadReplay(qs) {
+function loadReplay(qs, hash) {
     var params = qs.substr(1).split("&").reduce(function (x, p) {
         var pair = p.split('=');
         x[pair[0]] = decodeURIComponent(pair[1]);
         return x;
     }, {});
 
-    $.ajax("/api/replay" + qs, { dataType: 'json' } )
-        .fail(function (jqXHR, textStatus, errorThrown) { alert(errorThrown) } )
-        .done(function (data,status, xhr) {
-        MapName = data[0][0].toLowerCase();
-        MapSize = Sizes[MapName];
+    if (hash) {
+        params = hash.substr(1).split("&").reduce(function (x, p) {
+            var pair = p.split('=');
+            x[pair[0]] = decodeURIComponent(pair[1]);
+            return x;
+        }, params);
+    }
+
+    $.ajax("/api/replay" + qs, { dataType: 'json' })
+        .fail(function (jqXHR, textStatus, errorThrown) {
+            appInsights.trackException(errorThrown);
+            alert(errorThrown);
+        })
+        .done(function (data, status, xhr) {
+            MapName = data[0][0].toLowerCase();
+            MapSize = Sizes[MapName];
 
 
 
-        map = L.map('map', {
-            worldCopyJump: false,
-            zoomAnimation: false,
-            keyboard: false,
-            zoomControl: true,
-            crs: L.CRS.Simple
-        });
+            map = L.map('map', {
+                worldCopyJump: false,
+                zoomAnimation: false,
+                keyboard: false,
+                zoomControl: true,
+                crs: L.CRS.Simple
+            });
 
 
 
-        /*
-        map.on('zoomend', function(e) {
-            console.log(map.getZoom());
-        });
+            /*
+            map.on('zoomend', function(e) {
+                console.log(map.getZoom());
+            });
+    
+            map.on('click', function(e) {
+                console.log(map.getMaxZoom());
+            });
+            */
 
-        map.on('click', function(e) {
-            console.log(map.getMaxZoom());
-        });
-        */
+            L.tileLayer('https://replayviewer.blob.core.windows.net/maps/' + MapName + '/{z}/{x}_{y}.png', {
+                minZoom: 4,
+                maxZoom: 7,
+                continuousWorld: true,
+                noWrap: true,
+                errorTileUrl: '/images/blank.png',
+                attribution: "Online replay viewer by <a href='http://серьёзныеигры.рф/index.php?subaction=userinfo&user=Stolen' target='_blank'>Stolen</a> and <a href='http://серьёзныеигры.рф/index.php?subaction=userinfo&user=hitman' target='_blank'>hitman</a> "
+            }).addTo(map);
 
-        L.tileLayer('https://replayviewer.blob.core.windows.net/maps/' + MapName + '/{z}/{x}_{y}.png', {
-            minZoom: 4,
-            maxZoom: 7,
-            continuousWorld: true,
-            noWrap: true,
-            errorTileUrl: '/images/blank.png',
-            attribution: "Online replay viewer by <a href='http://серьёзныеигры.рф/index.php?subaction=userinfo&user=Stolen' target='_blank'>Stolen</a> and <a href='http://серьёзныеигры.рф/index.php?subaction=userinfo&user=hitman' target='_blank'>hitman</a> "
-        }).addTo(map);
+            map.setView(map.unproject([MapSize[0] / 2, MapSize[1] / 2], map.getMaxZoom()), map.getMinZoom());
 
-        map.setView(map.unproject([MapSize[0] / 2, MapSize[1] / 2], map.getMaxZoom()), map.getMinZoom());
+            map.on('mousemove', function (e) {
+                var point = map.project(e.latlng, map.getMaxZoom());
+                $('.coordx').text(parseInt(point['x']/*/100*/));
+                $('.coordy').text(parseInt((MapSize[1] - point['y'])/*/100*/));
+            });
 
-        map.on('mousemove', function (e) {
-            var point = map.project(e.latlng, map.getMaxZoom());
-            $('.coordx').text(parseInt(point['x']/*/100*/));
-            $('.coordy').text(parseInt((MapSize[1] - point['y'])/*/100*/));
-        });
-
-        replay = new Replay(params.p,  data);
-        if (params.t) { replay.rewind(params.t) };
-        if (params.pause == 1) { replay.stop(); };
-    })
+            replay = new Replay(params.p, data);
+            if (params.t) { replay.rewind(params.t) };
+            if (params.pause == 1) { replay.stop(); };
+        })
 }
 
 $(document).ready(function () {
     var qs = document.location.search;
-    if (qs) loadReplay(qs);
+    if (qs) loadReplay(qs, document.location.hash);
 
 
     $(document).on('change', 'input[name=showdead]', function () {
