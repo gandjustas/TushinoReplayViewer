@@ -20,8 +20,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ReplayParser\ReplayParser.csproj" />
     <ProjectReference Include="..\PboTools\PboTools.csproj" />
+    <ProjectReference Include="..\ReplayParser\ReplayParser.csproj" />
   </ItemGroup>
 
   <ItemGroup>
