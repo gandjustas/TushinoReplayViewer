@@ -2,7 +2,7 @@
 
 namespace Tushino
 {
-    internal class ParseException : Exception
+    public class ParseException : Exception
     {
         private ReplayParser parser;
         public ParseException(string message, ReplayParser parser) : base(message)
