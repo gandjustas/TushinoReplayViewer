@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using System.Threading;
 using Microsoft.EntityFrameworkCore;
-
+using PboTools;
 
 namespace Tushino
 {
@@ -79,7 +79,7 @@ namespace Tushino
                     Console.WriteLine();
                 }
             });
-
+            //foreach (var pbo in Directory.EnumerateFiles(dir, "*.pbo"))
             Parallel.ForEach(Directory.EnumerateFiles(dir, "*.pbo"), pbo =>
             {
 
@@ -93,39 +93,37 @@ namespace Tushino
                 {
                     using (var file = File.OpenRead(pbo))
                     {
-                        foreach (var f in PboTools.PboFile.EnumerateEntries(file))
-                        {
-                            if (f.Path == "log.txt")
-                            {
-                                using (var input = new StreamReader(new MemoryStream(f.FileContents)))
-                                {
+                        var stream = PboFile.FromStream(file).OpenFile("log.txt");
 
-                                    //Console.WriteLine(replayName);
-                                    var p = new ReplayProcessor(input);
-                                    Replay replay;
-                                    try
-                                    {
-                                        replay = p.ProcessReplay();
-                                        if (replay != null)
-                                        {
-                                            Interlocked.Increment(ref counterParsed);
-                                            //if (counter % 100 == 0)
-                                        }
-                                    }
-                                    catch (ParseException e)
-                                    {
-                                        exceptions.Add(Tuple.Create(replayName, e));
-                                        replay = p.GetResult();
-                                    }
+                        if (stream != null)
+                        {
+                            using (var input = new StreamReader(stream))
+                            {
+                                //Console.WriteLine(replayName);
+                                var p = new ReplayProcessor(input);
+                                Replay replay;
+                                try
+                                {
+                                    replay = p.ProcessReplay();
                                     if (replay != null)
                                     {
-                                        replay.Server = replayName.Substring(0, 2);
-                                        queue.Add(replay);
+                                        Interlocked.Increment(ref counterParsed);
+                                        //if (counter % 100 == 0)
                                     }
-                                    Interlocked.Increment(ref counterProcessed);
                                 }
-
+                                catch (ParseException e)
+                                {
+                                    exceptions.Add(Tuple.Create(replayName, e));
+                                    replay = p.GetResult();
+                                }
+                                if (replay != null)
+                                {
+                                    replay.Server = replayName.Substring(0, 2);
+                                    queue.Add(replay);
+                                }
+                                Interlocked.Increment(ref counterProcessed);
                             }
+
                         }
                     }
                 }

@@ -7,29 +7,54 @@ namespace PboTools
 {
     public class PboEntry
     {
-        List<string> extensions = new List<string>();
+        public string Path { get; protected set; }
 
-        public string Path { get; private set; }
+        public uint PackingMethod { get; protected set; }
 
-        public uint PackingMethod { get; private set; }
+        public uint OriginalSize { get; protected set; }
 
-        public uint OriginalSize { get; private set; }
+        public uint Reserved { get; protected set; }
 
-        public uint Reserved { get; private set; }
+        public uint Timestamp { get; protected set; }
 
-        public uint Timestamp { get; private set; }
+        public uint DataSize { get; protected set; }
 
-        public int DataSize { get; private set; }
-
-        public byte[] FileContents { get; private set; }
-
-        public IEnumerable<string> Extensions
+        public byte[] FileContents
         {
             get
             {
-                return extensions;
+                if (fileContents != null)
+                {
+                    return fileContents;
+                }
+                else if (s != null)
+                {
+                    s.Seek(0, SeekOrigin.Begin);
+                    fileContents = new byte[DataSize];
+                    s.Read(fileContents, 0, (int)DataSize);
+                    return fileContents;
+                }
+                else if(fi!=null)
+                {
+                    using (var s = fi.OpenRead())
+                    {
+                        fileContents = new byte[DataSize];
+                        s.Read(fileContents, 0, (int)DataSize);
+                        return fileContents;
+                    }
+                }
+                else return null;
+            }
+            protected set
+            {
+                fileContents = value;
             }
         }
+
+
+        protected byte[] fileContents;
+        Stream s;
+        FileInfo fi;
 
 
         internal void ReadHeader(BinaryReader reader)
@@ -39,17 +64,9 @@ namespace PboTools
             this.OriginalSize = reader.ReadUInt32();
             this.Reserved = reader.ReadUInt32();
             this.Timestamp = reader.ReadUInt32();
-            this.DataSize = (int)reader.ReadUInt32();
+            this.DataSize = reader.ReadUInt32();
         }
 
-        internal void ReadExtensions(BinaryReader reader)
-        {
-            string s;
-            while ((s = reader.ReadStringZ()).Length != 0)
-            {
-                extensions.Add(s);
-            }
-        }
         internal void ReadBodySeq(BinaryReader r)
         {
             if (PackingMethod == 0x43707273 && OriginalSize != DataSize)
@@ -58,11 +75,26 @@ namespace PboTools
             }
             else
             {
-                FileContents = r.ReadBytes(DataSize);
+                FileContents = r.ReadBytes((int)DataSize);
 
             }
-
         }
+        internal void FromFile(FileInfo fi, string prefix)
+        {
+            Path = prefix + fi.Name;
+            PackingMethod = 0;
+            Reserved = 0;
+            OriginalSize = DataSize = (uint)fi.Length;
+            PackingMethod = 0;
+
+            this.fi = fi;
+        }
+
+        internal void SetSource(Stream s)
+        {
+            this.s = s;
+        }
+
 
         internal void WriteHeader(BinaryWriter writer)
         {
@@ -76,7 +108,7 @@ namespace PboTools
 
         internal void WriteBody(Stream sr)
         {
-            sr.Write(this.FileContents, 0, this.DataSize);
+            sr.Write(this.FileContents, 0, (int)this.DataSize);
         }
 
 
@@ -120,9 +152,21 @@ namespace PboTools
             return 0;
         }
 
-        public Stream ToStream()
+        public virtual Stream ToStream()
         {
-            return new MemoryStream(this.FileContents);
+            if (fi != null) return fi.OpenRead();
+
+            if (s == null) return s;
+
+            if (PackingMethod == 0x43707273 && OriginalSize != DataSize)
+            {
+                return new CompressedStream(s, OriginalSize);
+            }
+            else
+            {
+                return s;
+
+            }
         }
 
         private static byte[] Unpack(BinaryReader reader, uint originalSize)

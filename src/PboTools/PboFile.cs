@@ -9,8 +9,54 @@ using System.Text.RegularExpressions;
 namespace PboTools
 {
     [SuppressMessage("Microsoft.Naming", "CA1710:IdentifiersShouldHaveCorrectSuffix")]
-    public static class PboFile
+    public abstract class PboFile
     {
+        private bool isInitialized = false;
+        protected List<string> extensions;
+        protected List<PboEntry> entries;
+
+        public ICollection<string> Extensions
+        {
+            get
+            {
+                EnsureHeader();
+                return extensions.AsReadOnly();
+            }
+        }
+        public ICollection<PboEntry> Entries
+        {
+            get
+            {
+                EnsureHeader();
+                PrepareEntries();
+                return entries;
+            }
+        }
+
+        protected abstract void PrepareEntries();
+
+        public IEnumerable<PboEntry> EnumerateEntries()
+        {
+            EnsureHeader();
+            return EnumerateEntriesInternal();
+        }
+
+        private void EnsureHeader()
+        {
+            if (!isInitialized)
+            {
+                entries = new List<PboEntry>();
+                extensions = new List<string>();
+
+                ReadHeader();
+                isInitialized = true;
+            }
+        }
+
+        protected abstract void ReadHeader();
+        protected abstract IEnumerable<PboEntry> EnumerateEntriesInternal();
+
+
         public static IEnumerable<PboEntry> EnumerateEntries(Stream s)
         {
             var reader = new BinaryReader(s, System.Text.Encoding.ASCII, true);
@@ -25,7 +71,9 @@ namespace PboTools
                     {
                         break;
                     }
-                    pboEntry.ReadExtensions(reader);
+                    while (reader.ReadStringZ().Length != 0)
+                    {
+                    }
                 }
                 else
                 {
@@ -38,6 +86,15 @@ namespace PboTools
                 current.ReadBodySeq(reader);
                 yield return current;
             }
+        }
+
+        public static PboFile FromStream(Stream s)
+        {
+            return s.CanSeek ? new SeekableStreamPboFile(s) : new StreamPboFile(s);
+        }
+        public static PboFile FromFolder(DirectoryInfo dir)
+        {
+            return new FolderPboFile(dir);
         }
 
     }
