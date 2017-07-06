@@ -8,9 +8,10 @@ using Tushino;
 namespace Tushino.Migrations
 {
     [DbContext(typeof(ReplaysContext))]
-    partial class ReplaysContextModelSnapshot : ModelSnapshot
+    [Migration("20170706183507_CommAndWinner")]
+    partial class CommAndWinner
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
             modelBuilder
                 .HasAnnotation("ProductVersion", "1.1.1");

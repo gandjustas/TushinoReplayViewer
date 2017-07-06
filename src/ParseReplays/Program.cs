@@ -89,7 +89,7 @@ namespace Tushino
                     Server = replayName.Substring(0, 2),
                     Timestamp = replayName.Substring(3, 19)
                 };
-                if (!existingRecords.Contains(key))
+                if (rebuildBase || !existingRecords.Contains(key))
                 {
                     using (var file = File.OpenRead(pbo))
                     {

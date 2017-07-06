@@ -19,6 +19,12 @@ namespace Tushino
         [MaxLength(50)]
         public string Mission { get; set; }
         public bool IsFinished { get; set; }
+        public int? WinnerSide { get; set; }
+        public string CommanderWest { get; set; }
+        public string CommanderEast { get; set; }
+        public string CommanderGuer { get; set; }
+        public string Admin { get; set; }
+        public int PlayTime { get; set; }
         public DateTime Timestamp { get; set; }
         public ICollection<Unit> Units { get; private set; }
         public ICollection<EnterExitEvent> Events { get; private set; }

@@ -10,6 +10,12 @@ namespace Tushino
     public class ReplayProcessor
     {
         static readonly IFormatProvider provider = CultureInfo.InvariantCulture;
+        static readonly string[][] sides = {
+            new [] { "WEST", "синие" },
+            new [] { "EAST", "красные" },
+            new [] { "GUER", "зеленые" },
+            new [] { "CIV", "гражданские" },
+        };
         ReplayParser reader;
         Dictionary<int, Unit> units;
         Replay result;
@@ -61,6 +67,7 @@ namespace Tushino
                 var killsInFrame = new List<Kill>();
                 reader.Down();
                 currentTime = reader.ReadInt();
+                result.PlayTime = currentTime;
                 ParseEvents(killsInFrame);
                 ParseUnitsInFrame(killsInFrame);
                 reader.Up();
@@ -87,6 +94,9 @@ namespace Tushino
 
             switch (eventType)
             {
+                case 0: //Info
+                    ParseInfo(reader.ReadString());
+                    break;
                 case 1: //Unit added
                     AddUnit();
                     break;
@@ -129,6 +139,47 @@ namespace Tushino
             }
 
             reader.Up();
+        }
+
+        private void ParseInfo(string v)
+        {
+            if (v.StartsWith("Winner: ")) //Победа
+            {
+                var side = v.Substring("Winner: ".Length);
+                var sideIndex = Array.FindIndex(sides, s => s[0] == side);
+                result.WinnerSide = sideIndex;
+            }
+            else if (v.StartsWith("ИА: ")) //Admin
+            {
+                result.Admin = v.Substring("ИА: ".Length);
+            }
+            else if (v.StartsWith("КС: ")) //КС
+            {
+                var commanders = v.Substring("КС: ".Length).Split(';');
+                foreach(var co in commanders)
+                {
+                    var p = co.Split('-');
+                    if(p.Length == 2)
+                    {
+                        var side = p[0].Trim();
+                        var com = p[1].Trim();
+                        var sideIndex = Array.FindIndex(sides, s => s[1] == side);
+                        switch(sideIndex)
+                        {
+                            case 0:
+                                result.CommanderWest = com;
+                                break;
+                            case 1:
+                                result.CommanderEast = com;
+                                break;
+                            case 2:
+                                result.CommanderGuer = com;
+                                break;
+                        }
+                    }
+                }
+            }
+
         }
 
         private void PasreFrame0()
