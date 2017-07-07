@@ -582,10 +582,14 @@ function loadReplay(qs, hash) {
                 console.log(map.getMaxZoom());
             });
             */
+            var urlTemplate = 'https://replayviewer.blob.core.windows.net/maps/' + MapName + '/{z}/{x}_{y}.png';
+            if (params['new']) {
+                urlTemplate = 'https://replayviewer.blob.core.windows.net/maps-new/' + MapName + '/{z}/{y}_{x}.png';
+            }
 
-            L.tileLayer('https://replayviewer.blob.core.windows.net/maps/' + MapName + '/{z}/{x}_{y}.png', {
+            L.tileLayer(urlTemplate, {
                 minZoom: 4,
-                maxZoom: 7,
+                maxZoom: params['new'] ? 8 : 7,
                 continuousWorld: true,
                 noWrap: true,
                 errorTileUrl: '/images/blank.png',
