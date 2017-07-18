@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "PboToolsTest": {
+      "commandName": "Project",
+      "commandLineArgs": "D:\\Projects\\sgtu_ace_mods\\addons\\",
+      "workingDirectory": "P:\\"
+    }
+  }
+}

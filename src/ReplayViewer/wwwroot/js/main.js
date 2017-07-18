@@ -589,7 +589,7 @@ function loadReplay(qs, hash) {
 
             L.tileLayer(urlTemplate, {
                 minZoom: 4,
-                maxZoom: params['new'] ? 8 : 7,
+                maxZoom: params['new'] ? 7 : 7,
                 continuousWorld: true,
                 noWrap: true,
                 errorTileUrl: '/images/blank.png',
