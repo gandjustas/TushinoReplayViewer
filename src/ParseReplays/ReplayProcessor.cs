@@ -149,22 +149,23 @@ namespace Tushino
                 var sideIndex = Array.FindIndex(sides, s => s[0] == side);
                 result.WinnerSide = sideIndex;
             }
-            else if (v.StartsWith("ИА: ")) //Admin
-            {
-                result.Admin = v.Substring("ИА: ".Length);
-            }
+
             else if (v.StartsWith("КС: ")) //КС
             {
                 var commanders = v.Substring("КС: ".Length).Split(';');
-                foreach(var co in commanders)
+                if (commanders.Last().Trim().StartsWith("ИА: ")) //Admin
+                {
+                    result.Admin = commanders.Last().Trim().Substring("ИА: ".Length);
+                }
+                foreach (var co in commanders)
                 {
                     var p = co.Split('-');
-                    if(p.Length == 2)
+                    if (p.Length == 2)
                     {
                         var side = p[0].Trim();
                         var com = p[1].Trim();
                         var sideIndex = Array.FindIndex(sides, s => s[1] == side);
-                        switch(sideIndex)
+                        switch (sideIndex)
                         {
                             case 0:
                                 result.CommanderWest = com;
@@ -303,7 +304,7 @@ namespace Tushino
                     }
                 }
 
-                foreach(var kill in killsInFrame.Where(k => k.KillerId == unitId)) kill.KillerVehicleId = vehicleId;
+                foreach (var kill in killsInFrame.Where(k => k.KillerId == unitId)) kill.KillerVehicleId = vehicleId;
                 reader.Up();
 
             }

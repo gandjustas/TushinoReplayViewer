@@ -19,17 +19,17 @@ namespace PboTools
     }
     public struct BisToken
     {
-        public BisTokenType Type { get; set; }
-        public int BeginLine { get; set; }
-        public int BeginPos { get; set; }
-        public int EndLine { get; set; }
-        public int EndPos { get; set; }
-        public string Value { get; set; }
-        public string File { get; set; }
+        public BisTokenType Type { get; internal set; }
+        public int BeginLine { get; internal set; }
+        public int BeginPos { get; internal set; }
+        public int EndLine { get; internal set; }
+        public int EndPos { get; internal set; }
+        public string Value { get; internal set; }
+        public string File { get; internal set; }
 
         public override string ToString()
         {
-            return string.Format("Line {0:D3}, Column {1: D3}, Type {2}, Value {3}", BeginLine, BeginPos+1, Type, Value);
+            return Value;
         }
     }
 }

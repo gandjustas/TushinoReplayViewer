@@ -28,26 +28,21 @@ namespace PboTools
             this.macros = macros;
         }
 
-        public static IEnumerable<string> Prepocess(string fileName, TextReader reader, Func<string, string, Tuple<string, TextReader>> lookupFile)
-        {
-            var p = new Preprocessor(fileName, reader, lookupFile, new Dictionary<string, MacroDef>());
-            return p.Prepocess();
-        }
 
-        public IEnumerable<string> Prepocess()
+        private IEnumerable<FileLine> Prepocess()
         {
             string s;
             newLine:
             while ((s = reader.ReadLine()) != null)
             {
+                var ss = s;
                 lineNumber++;
-                s = s.Trim();
                 if (!insideComment)
                 {
                     var idx = s.IndexOf("/*");
                     if (idx > -1)
                     {
-                        s = s.Substring(0, idx);
+                        ss = s.Substring(0, idx);
                         insideComment = true;
                     }
                 }
@@ -56,27 +51,28 @@ namespace PboTools
                     var idx = s.IndexOf("*/");
                     if (idx > -1)
                     {
-                        s = s.Substring(idx + 2);
+                        ss = s.Substring(idx + 2);
                         insideComment = false;
                     }
                     else continue;
                 }
 
-                var commentIdx = s.IndexOf("//");
+                var commentIdx = ss.IndexOf("//");
                 if (commentIdx > -1)
                 {
-                    s = s.Substring(0, commentIdx);
+                    ss = ss.Substring(0, commentIdx);
                 }
 
-                if (s.StartsWith("#"))
+                if (ss.Trim().StartsWith("#"))
                 {
+                    ss = ss.TrimStart();
                     //Parse preprocessor
-                    if (s.Trim() == "#endif")
+                    if (ss.Trim() == "#endif")
                     {
                         supress = false;
                         wasIf = false;
                     }
-                    if (s.Trim() == "#else")
+                    if (ss.Trim() == "#else")
                     {
                         if (wasIf)
                         {
@@ -90,14 +86,14 @@ namespace PboTools
                     if (supress) goto newLine;
 
 
-                    if (s.StartsWith("#ifdef"))
+                    if (ss.StartsWith("#ifdef"))
                     {
                         var m = s.Substring("#ifdef".Length + 1);
                         supress = !macros.ContainsKey(m);
                         wasIf = true;
                     }
 
-                    if (s.StartsWith("#ifndef"))
+                    if (ss.StartsWith("#ifndef"))
                     {
                         var m = s.Substring("#ifndef".Length + 1);
                         supress = macros.ContainsKey(m);
@@ -105,13 +101,13 @@ namespace PboTools
 
                     }
 
-                    if (s.StartsWith("#undef"))
+                    if (ss.StartsWith("#undef"))
                     {
                         var m = s.Substring("#undef".Length + 1);
                         macros.Remove(m);
                     }
 
-                    if (s.StartsWith("#define"))
+                    if (ss.StartsWith("#define"))
                     {
                         var macro = new MacroDef
                         {
@@ -119,12 +115,12 @@ namespace PboTools
                             File = fileName
                         };
 
-                        var block = s.Substring("#define".Length + 1);
+                        var block = ss.Substring("#define".Length + 1);
 
                         while (block.EndsWith("\\"))
                         {
-                            s = reader.ReadLine();
-                            block = block.TrimEnd('\\') + s;
+                            ss = reader.ReadLine();
+                            block = block.TrimEnd('\\') + ss;
                             lineNumber++;
                         }
                         var m = defineParser.Match(block);
@@ -141,9 +137,9 @@ namespace PboTools
 
                     }
 
-                    if (s.StartsWith("#include"))
+                    if (ss.StartsWith("#include"))
                     {
-                        var f = s.Substring("#include".Length + 1).Trim('"', ' ', '<', '>');
+                        var f = ss.Substring("#include".Length + 1).Trim('"', ' ', '<', '>');
                         var l = lookupFile(fileName, f);
                         var p = new Preprocessor(l.Item1, l.Item2, lookupFile, macros);
                         foreach (var x in p.Prepocess())
@@ -156,7 +152,7 @@ namespace PboTools
                 if (supress) goto newLine;
                 if (s.Length > 0)
                 {
-                    yield return PreprocessLine(s);
+                    yield return new FileLine(fileName, lineNumber, PreprocessLine(s));
                 }
             }
         }
@@ -237,43 +233,10 @@ namespace PboTools
             return string.Join("", parts);
 
         }
-
-        //private string PreprocessParam(string pv)
-        //{
-        //    return string.Join("", (new Tokenizer(new StringReader(pv), FileName) { Macros = this.Macros }).Parse().Select(t => t.Value));
-        //}
-
-        //private IEnumerable<string> SplitParams(string value)
-        //{
-        //    var tokenizer = new Tokenizer(new StringReader(value), FileName);
-        //    var r = new List<string>();
-        //    var level = 0;
-        //    var pos = 0;
-        //    foreach (var t in tokenizer.Parse())
-        //    {
-        //        switch (t.Type)
-        //        {
-        //            case BisTokenType.LParen:
-        //            case BisTokenType.LSquare:
-        //            case BisTokenType.LCurly:
-        //                level++;
-        //                break;
-        //            case BisTokenType.RParen:
-        //            case BisTokenType.RSquare:
-        //            case BisTokenType.RCurly:
-        //                level--;
-        //                break;
-        //            case BisTokenType.Comma:
-        //                if (level == 0)
-        //                {
-        //                    yield return value.Substring(pos, t.EndPos - pos - 1);
-        //                    pos = t.EndPos;
-        //                }
-        //                break;
-        //        }
-        //    }
-        //    yield return value.Substring(pos, value.Length - pos);
-
-        //}
+        public static IEnumerable<FileLine> Prepocess(string fileName, TextReader reader, Func<string, string, Tuple<string, TextReader>> lookupFile)
+        {
+            var p = new Preprocessor(fileName, reader, lookupFile, new Dictionary<string, MacroDef>());
+            return p.Prepocess();
+        }
     }
 }

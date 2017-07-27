@@ -27,8 +27,15 @@ namespace PboToolsTest
                                                    : Path.Combine(Path.GetDirectoryName(x), path);
                                             return Tuple.Create(p, (TextReader)File.OpenText(p));
                                         });//.ToList();
-                            var t = new Tokenizer(lines);
-                            t.Parse().ToList();
+                            var tokens = Tokenizer.Tokenize(lines);
+                            var parseResult = ConfigParser.Parse(tokens);
+                            if(!parseResult.Success)
+                            {
+                                foreach (var e in parseResult.Errors)
+                                {
+                                    Console.WriteLine(e);
+                                }
+                            }
                             //foreach (var token in t.Parse())
                             //{
                             //    Console.WriteLine(token);

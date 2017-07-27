@@ -42,11 +42,12 @@ namespace PboTools
 
         static readonly string[] Operators2 = new[] { "&&", "||", ">=", "<=" };
 
-        IEnumerable<string> lines;
+        IEnumerable<FileLine> lines;
         TokenizerState state;
 
         int line = 0;
         int pos = 0;
+        FileLine l;
         string s;
 
 
@@ -60,20 +61,21 @@ namespace PboTools
             return string.Compare(s, pos, v, 0, v.Length, StringComparison.Ordinal) == 0;
         }
 
-        public Tokenizer(IEnumerable<string> lines)
+        private Tokenizer(IEnumerable<FileLine> lines)
         {
             this.lines = lines;
         }
 
 
-        public IEnumerable<BisToken> Parse()
+        private IEnumerable<BisToken> Parse()
         {
             state = TokenizerState.Default;
 
-            foreach (var s in lines)
+            foreach (var l in lines)
             {
-                this.s = s;
-                line++;
+                this.l = l;
+                this.s = l.Line;
+                line = l.LineNumber;
                 pos = 0;
 
                 while (pos <= s.Length)
@@ -146,6 +148,7 @@ namespace PboTools
                                         EndLine = line,
                                         EndPos = pos + 1,
                                         Value = c.ToString(),
+                                        File = l.File
                                     };
                                 }
                                 else if ((op = Array.Find(Operators2, Is)) != null)
@@ -158,6 +161,7 @@ namespace PboTools
                                         EndLine = line,
                                         EndPos = pos + 2,
                                         Value = op,
+                                        File = l.File
                                     };
                                     pos++;
                                 }
@@ -171,6 +175,7 @@ namespace PboTools
                                         EndLine = line,
                                         EndPos = pos + 1,
                                         Value = c.ToString(),
+                                        File = l.File
                                     };
                                 }
 
@@ -200,6 +205,7 @@ namespace PboTools
                                         BeginPos = elStartPos,
                                         EndLine = line,
                                         EndPos = pos,
+                                        File = l.File
                                     };
                                 }
                             }
@@ -234,12 +240,13 @@ namespace PboTools
                                     BeginPos = elStartPos,
                                     EndLine = line,
                                     EndPos = pos,
+                                    File = l.File
                                 };
                                 state = TokenizerState.Default;
                             }
                             break;
                         case TokenizerState.InNumber:
-                            if (char.IsDigit(c) || c == '.')
+                            if (char.IsDigit(c))
                             {
                                 buffer.Append(c);
                                 pos++;
@@ -254,6 +261,7 @@ namespace PboTools
                                     BeginPos = elStartPos,
                                     EndLine = line,
                                     EndPos = pos,
+                                    File = l.File
                                 };
                                 state = TokenizerState.Default;
                             }
@@ -263,6 +271,11 @@ namespace PboTools
             }
         }
 
+        public static IEnumerable<BisToken> Tokenize(IEnumerable<FileLine> lines)
+        {
+            var t = new Tokenizer(lines);
+            return t.Parse();
+        }
 
     }
 }
