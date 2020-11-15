@@ -20,6 +20,7 @@ namespace Tushino
         Dictionary<int, Unit> units;
         Replay result;
         int currentTime;
+        int prevTime;
         public ReplayProcessor(TextReader text)
         {
             reader = new ReplayParser(text);
@@ -50,6 +51,7 @@ namespace Tushino
 
             units = new Dictionary<int, Unit>();
             PasreFrame0();
+            prevTime = 0;
             ParseFrames();
             result.IsFinished = true;
             return result;
@@ -69,8 +71,9 @@ namespace Tushino
                 currentTime = reader.ReadInt();
                 result.PlayTime = currentTime;
                 ParseEvents(killsInFrame);
-                ParseUnitsInFrame(killsInFrame);
+                ParseUnitsInFrame(killsInFrame, currentTime - prevTime);
                 reader.Up();
+                prevTime = currentTime;
             }
         }
 
@@ -277,7 +280,7 @@ namespace Tushino
             result.Units.Add(u);
         }
 
-        private void ParseUnitsInFrame(List<Kill> killsInFrame)
+        private void ParseUnitsInFrame(List<Kill> killsInFrame, int timeDiff)
         {
             while (reader.HasMoreElements)
             {
@@ -297,9 +300,17 @@ namespace Tushino
                     if (!unit.TimeOfDeath.HasValue && damage >= 1)
                     {
                         unit.TimeOfDeath = currentTime;
-                        if (reader.HasMoreElements)
+                    }
+                    else
+                    {
+                        unit.VehicleOrDriverId = vehicleId;
+                        if(vehicleId.HasValue)
                         {
-                            unit.VehicleOrDriverId = vehicleId;
+                            unit.TimeInVehicle += timeDiff;
+                        }
+                        else
+                        {
+                            unit.TimeOnFoot += timeDiff;
                         }
                     }
                 }

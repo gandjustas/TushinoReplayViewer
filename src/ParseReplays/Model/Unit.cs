@@ -33,6 +33,8 @@ namespace Tushino
         public int? TimeOfDeath { get; set; }
 
         public bool IsVehicle { get; set; }
+        public int TimeInVehicle { get; set; }
+        public int TimeOnFoot { get; set; }
 
         public int? VehicleOrDriverId { get; set; } //at death   
     }

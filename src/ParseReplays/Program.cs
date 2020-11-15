@@ -8,6 +8,7 @@ using System.Collections.Concurrent;
 using System.Threading;
 using Microsoft.EntityFrameworkCore;
 using PboTools;
+using SharpCompress.Archives.SevenZip;
 
 namespace Tushino
 {
@@ -17,7 +18,7 @@ namespace Tushino
         {
             if (args.Length == 0)
             {
-                Console.WriteLine("Usage: dotnet ParseTsgReplays.dll path-to-unpacked-replays");
+                Console.WriteLine("Usage: dotnet ParseTsgReplays.dll path-to-replays");
                 return;
             }
 
@@ -69,7 +70,7 @@ namespace Tushino
             int counterParsed = 0;
             int counterProcessed = 0;
 
-            var exceptions = new BlockingCollection<Tuple<string, ParseException>>();
+            var exceptions = new BlockingCollection<Tuple<string, Exception>>();
             Task.Run(() =>
             {
                 foreach (var t in exceptions.GetConsumingEnumerable())
@@ -79,8 +80,7 @@ namespace Tushino
                     Console.WriteLine();
                 }
             });
-            //foreach (var pbo in Directory.EnumerateFiles(dir, "*.pbo"))
-            Parallel.ForEach(Directory.EnumerateFiles(dir, "*.pbo"), pbo =>
+            Parallel.ForEach(Directory.EnumerateFiles(dir, "*.pbo", SearchOption.AllDirectories), pbo =>
             {
 
                 var replayName = Path.GetFileNameWithoutExtension(pbo);
@@ -113,7 +113,7 @@ namespace Tushino
                                 }
                                 catch (ParseException e)
                                 {
-                                    exceptions.Add(Tuple.Create(replayName, e));
+                                    exceptions.Add(Tuple.Create(replayName, (Exception)e));
                                     replay = p.GetResult();
                                 }
                                 if (replay != null)
@@ -129,6 +129,71 @@ namespace Tushino
                 }
                 if (counterProcessed % 100 == 0) Console.WriteLine("Processed {0} parsed {1}", counterProcessed, counterParsed);
             });
+
+            //foreach(var archive in Directory.EnumerateFiles(dir, "*.7z", SearchOption.AllDirectories))
+            Parallel.ForEach(Directory.EnumerateFiles(dir, "*.7z", SearchOption.AllDirectories), archive =>
+            {
+                try
+                {
+                    using (var arch = SevenZipArchive.Open(archive))
+                    {
+                        foreach (var ent in arch.Entries)
+                        {
+
+                            var replayName = Path.GetFileNameWithoutExtension(ent.Key);
+                            var key = new
+                            {
+                                Server = replayName.Substring(0, 2),
+                                Timestamp = replayName.Substring(3, 19)
+                            };
+                            if (rebuildBase || !existingRecords.Contains(key))
+                            {
+                                using (var file = ent.OpenEntryStream())
+                                {
+                                    var stream = PboFile.FromStream(file).OpenFile("log.txt");
+
+                                    if (stream != null)
+                                    {
+                                        using (var input = new StreamReader(stream))
+                                        {
+                                            //Console.WriteLine(replayName);
+                                            var p = new ReplayProcessor(input);
+                                            Replay replay;
+                                            try
+                                            {
+                                                replay = p.ProcessReplay();
+                                                if (replay != null)
+                                                {
+                                                    Interlocked.Increment(ref counterParsed);
+                                                    //if (counter % 100 == 0)
+                                                }
+                                            }
+                                            catch (ParseException e)
+                                            {
+                                                exceptions.Add(Tuple.Create(replayName, (Exception)e));
+                                                replay = p.GetResult();
+                                            }
+                                            if (replay != null)
+                                            {
+                                                replay.Server = replayName.Substring(0, 2);
+                                                queue.Add(replay);
+                                            }
+                                            Interlocked.Increment(ref counterProcessed);
+                                        }
+
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    exceptions.Add(Tuple.Create(archive, e));
+                }
+                if (counterProcessed % 100 == 0) Console.WriteLine("Processed {0} parsed {1}", counterProcessed, counterParsed);
+            });
+
             Console.WriteLine("Processed {0} parsed {1}", counterProcessed, counterParsed);
 
             queue.CompleteAdding();

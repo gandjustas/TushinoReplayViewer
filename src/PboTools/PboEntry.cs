@@ -156,7 +156,7 @@ namespace PboTools
         {
             if (fi != null) return fi.OpenRead();
 
-            if (s == null) return s;
+            if (fileContents != null) return new MemoryStream(FileContents);
 
             if (PackingMethod == 0x43707273 && OriginalSize != DataSize)
             {

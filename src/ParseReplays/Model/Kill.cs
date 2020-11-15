@@ -24,6 +24,5 @@ namespace Tushino
 
         public int? KillerVehicleId { get; set; }
 
-
     }
 }
