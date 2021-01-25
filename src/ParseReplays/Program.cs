@@ -9,16 +9,23 @@ using System.Threading;
 using Microsoft.EntityFrameworkCore;
 using PboTools;
 using SharpCompress.Archives.SevenZip;
+using System.Threading.Channels;
 
 namespace Tushino
 {
+    public record ReplayKey(string server, DateTime timestamp);
     public class Program
     {
+        static int counterParsed = 0;
+        static int counterProcessed = 0;
+        static Channel<Tuple<string, Exception>> exceptions = Channel.CreateUnbounded<Tuple<string, Exception>>(new UnboundedChannelOptions { SingleReader = true });
+        static Channel<Replay> queue = Channel.CreateUnbounded<Replay>(new UnboundedChannelOptions { SingleReader = true });
+        static HashSet<ReplayKey> ExistingRecords = new HashSet<ReplayKey>();
         public static void Main(string[] args)
         {
             if (args.Length == 0)
             {
-                Console.WriteLine("Usage: dotnet ParseTsgReplays.dll path-to-replays");
+                Console.WriteLine("Usage: ParseTsgReplays.exe path-to-replays [-rebuild [-unfinished]]");
                 return;
             }
 
@@ -34,173 +41,157 @@ namespace Tushino
                 unfinished = true;
             }
 
-            var db = new ReplaysContext();
-            db.Database.Migrate();
-            var allReplays = db.Replays.AsQueryable();
-            if (unfinished)
+            using (var db = new ReplaysContext())
             {
-                allReplays = allReplays.Where(r => r.IsFinished == true);
-            }
-            var existingRecords = !rebuildBase ? allReplays.Select(r => new { r.Server, Timestamp = r.Timestamp.ToString("yyyy-MM-dd-HH-mm-ss") }).ToSet() : null;
-            db.Dispose();
+                db.Database.Migrate();
+                if (!rebuildBase)
+                {
+                    var allReplays = db.Replays.AsQueryable();
+                    if (unfinished)
+                    {
+                        allReplays = allReplays.Where(r => r.IsFinished == true);
+                    }
+                    ExistingRecords = allReplays.Select(r => new ReplayKey(r.Server, r.Timestamp)).ToHashSet();
+                }
+            };
 
 
-            var queue = new BlockingCollection<Replay>();
-            var task = Task.Run(() =>
+            var task = Task.Run(async () =>
             {
+                var set = new HashSet<ReplayKey>();
+
                 var counter = 0;
                 List<Replay> toAdd = new List<Replay>();
-                foreach (var r in queue.GetConsumingEnumerable())
+                await foreach (var r in queue.Reader.ReadAllAsync())
                 {
-
-                    toAdd.Add(r);
-                    if (++counter % 100 == 0)
+                    if (ExistingRecords.Add(new(r.Server, r.Timestamp)))
                     {
-                        SaveReplayList(toAdd);
-                        counter = 0;
-                        toAdd.Clear();
+                        toAdd.Add(r);
+                        if (++counter % 1000 == 0)
+                        {
+                            using (var db = new ReplaysContext())
+                            {
+                                db.Replays.AddRange(toAdd);
+                                await db.SaveChangesAsync();
+                                counter = 0;
+                                toAdd.Clear();
+                            }
+                        }
                     }
                 }
-                SaveReplayList(toAdd);
+                using (var db = new ReplaysContext())
+                {
+                    db.Replays.AddRange(toAdd);
+                    await db.SaveChangesAsync();
+                }
             });
 
+
+            var provider = CultureInfo.InvariantCulture;
+
+            Task.Run(async () =>
+                {
+                    await foreach (var t in exceptions.Reader.ReadAllAsync())
+                    {
+                        Console.WriteLine(t.Item1);
+                        Console.WriteLine(t.Item2.ToString());
+                        Console.WriteLine();
+                    }
+                });
 
             var dir = args[0];
-            var provider = CultureInfo.InvariantCulture;
-            int counterParsed = 0;
-            int counterProcessed = 0;
 
-            var exceptions = new BlockingCollection<Tuple<string, Exception>>();
-            Task.Run(() =>
+            if (Path.HasExtension(dir))
             {
-                foreach (var t in exceptions.GetConsumingEnumerable())
-                {
-                    Console.WriteLine(t.Item1);
-                    Console.WriteLine(t.Item2.ToString());
-                    Console.WriteLine();
-                }
-            });
-            Parallel.ForEach(Directory.EnumerateFiles(dir, "*.pbo", SearchOption.AllDirectories), pbo =>
+                if (Path.GetExtension(dir) == ".pbo") ParsePbo(dir);
+                if (Path.GetExtension(dir) == ".7z") ParseArchive(dir);
+            }
+            else
             {
-
-                var replayName = Path.GetFileNameWithoutExtension(pbo);
-                var key = new
-                {
-                    Server = replayName.Substring(0, 2),
-                    Timestamp = replayName.Substring(3, 19)
-                };
-                if (rebuildBase || !existingRecords.Contains(key))
-                {
-                    using (var file = File.OpenRead(pbo))
-                    {
-                        var stream = PboFile.FromStream(file).OpenFile("log.txt");
-
-                        if (stream != null)
-                        {
-                            using (var input = new StreamReader(stream))
-                            {
-                                //Console.WriteLine(replayName);
-                                var p = new ReplayProcessor(input);
-                                Replay replay;
-                                try
-                                {
-                                    replay = p.ProcessReplay();
-                                    if (replay != null)
-                                    {
-                                        Interlocked.Increment(ref counterParsed);
-                                        //if (counter % 100 == 0)
-                                    }
-                                }
-                                catch (ParseException e)
-                                {
-                                    exceptions.Add(Tuple.Create(replayName, (Exception)e));
-                                    replay = p.GetResult();
-                                }
-                                if (replay != null)
-                                {
-                                    replay.Server = replayName.Substring(0, 2);
-                                    queue.Add(replay);
-                                }
-                                Interlocked.Increment(ref counterProcessed);
-                            }
-
-                        }
-                    }
-                }
-                if (counterProcessed % 100 == 0) Console.WriteLine("Processed {0} parsed {1}", counterProcessed, counterParsed);
-            });
-
-            //foreach(var archive in Directory.EnumerateFiles(dir, "*.7z", SearchOption.AllDirectories))
-            Parallel.ForEach(Directory.EnumerateFiles(dir, "*.7z", SearchOption.AllDirectories), archive =>
-            {
-                try
-                {
-                    using (var arch = SevenZipArchive.Open(archive))
-                    {
-                        foreach (var ent in arch.Entries)
-                        {
-
-                            var replayName = Path.GetFileNameWithoutExtension(ent.Key);
-                            var key = new
-                            {
-                                Server = replayName.Substring(0, 2),
-                                Timestamp = replayName.Substring(3, 19)
-                            };
-                            if (rebuildBase || !existingRecords.Contains(key))
-                            {
-                                using (var file = ent.OpenEntryStream())
-                                {
-                                    var stream = PboFile.FromStream(file).OpenFile("log.txt");
-
-                                    if (stream != null)
-                                    {
-                                        using (var input = new StreamReader(stream))
-                                        {
-                                            //Console.WriteLine(replayName);
-                                            var p = new ReplayProcessor(input);
-                                            Replay replay;
-                                            try
-                                            {
-                                                replay = p.ProcessReplay();
-                                                if (replay != null)
-                                                {
-                                                    Interlocked.Increment(ref counterParsed);
-                                                    //if (counter % 100 == 0)
-                                                }
-                                            }
-                                            catch (ParseException e)
-                                            {
-                                                exceptions.Add(Tuple.Create(replayName, (Exception)e));
-                                                replay = p.GetResult();
-                                            }
-                                            if (replay != null)
-                                            {
-                                                replay.Server = replayName.Substring(0, 2);
-                                                queue.Add(replay);
-                                            }
-                                            Interlocked.Increment(ref counterProcessed);
-                                        }
-
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    exceptions.Add(Tuple.Create(archive, e));
-                }
-                if (counterProcessed % 100 == 0) Console.WriteLine("Processed {0} parsed {1}", counterProcessed, counterParsed);
-            });
+                Parallel.ForEach(Directory.EnumerateFiles(dir, "*.pbo", SearchOption.AllDirectories), ParsePbo);
+                Parallel.ForEach(Directory.EnumerateFiles(dir, "*.7z", SearchOption.AllDirectories), ParseArchive);
+            }
 
             Console.WriteLine("Processed {0} parsed {1}", counterProcessed, counterParsed);
 
-            queue.CompleteAdding();
-            exceptions.CompleteAdding();
+            queue.Writer.TryComplete();
+            exceptions.Writer.TryComplete();
+
             task.Wait();
 
-            ClearDuplicates();
+            //ClearDuplicates();
+        }
+
+        static void ParsePbo(string pbo)
+        {
+            var replayName = Path.GetFileNameWithoutExtension(pbo);
+            using (var file = File.OpenRead(pbo))
+            {
+                ParseReplayLog(replayName, file);
+            }
+            if (counterProcessed % 100 == 0) Console.WriteLine("Processed {0} parsed {1}", counterProcessed, counterParsed);
+        }
+
+        static void ParseArchive(string archive)
+        {
+            try
+            {
+                using (var arch = SevenZipArchive.Open(archive))
+                {
+                    foreach (var ent in arch.Entries)
+                    {
+                        var replayName = Path.GetFileNameWithoutExtension(ent.Key);
+                        using (var file = ent.OpenEntryStream())
+                        {
+                            ParseReplayLog(replayName, file);
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                exceptions.Writer.TryWrite(Tuple.Create(archive, e));
+            }
+            if (counterProcessed % 100 == 0) Console.WriteLine("Processed {0} parsed {1}", counterProcessed, counterParsed);
+        }
+
+        static void ParseReplayLog(string replayName, Stream file)
+        {
+            var key = new ReplayKey(
+                  replayName.Substring(0, 2),
+                  DateTime.ParseExact(replayName.Substring(3, 19), "yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture)
+                );
+            if (ExistingRecords.Contains(key)) return;
+
+            var stream = PboFile.FromStream(file).OpenFile("log.txt");
+
+            if (stream != null)
+            {
+                using (var input = new StreamReader(stream))
+                {
+                    var p = new ReplayProcessor(input);
+                    Replay replay;
+                    try
+                    {
+                        replay = p.ProcessReplay();
+                        if (replay != null)
+                        {
+                            Interlocked.Increment(ref counterParsed);
+                        }
+                    }
+                    catch (ParseException e)
+                    {
+                        exceptions.Writer.TryWrite(Tuple.Create(replayName, (Exception)e));
+                        replay = p.GetResult();
+                    }
+                    Interlocked.Increment(ref counterProcessed);
+                    if (replay != null)
+                    {
+                        replay.Server = replayName.Substring(0, 2);
+                        queue.Writer.TryWrite(replay);
+                    }
+                }
+            }
         }
 
         private static void ClearDuplicates()
@@ -208,11 +199,11 @@ namespace Tushino
             //Clear duplicates
             using (var db = new ReplaysContext())
             {
-                db.Database.ExecuteSqlCommand(@"
+                db.Database.ExecuteSqlRaw(@"
                     delete   from EnterExitEvents
                     where    ReplayId not in
                              (
-                             select  min(Id)
+                             select  max(Id)
                              from    Replays
                              group by Server, Timestamp
                              );
@@ -220,7 +211,7 @@ namespace Tushino
                     delete   from Units
                     where    ReplayId not in
                              (
-                             select  min(Id)
+                             select  max(Id)
                              from    Replays
                              group by Server, Timestamp
                              );
@@ -228,7 +219,7 @@ namespace Tushino
                     delete   from Kills
                     where    ReplayId not in
                              (
-                             select  min(Id)
+                             select  max(Id)
                              from    Replays
                              group by Server, Timestamp
                              )	;	 
@@ -236,7 +227,7 @@ namespace Tushino
                     delete   from Replays
                     where    Id not in
                              (
-                             select  min(Id)
+                             select  max(Id)
                              from    Replays
                              group by Server, Timestamp
                              )	;	 
@@ -244,22 +235,5 @@ namespace Tushino
             }
         }
 
-        private static void SaveReplayList(List<Replay> toAdd)
-        {
-            using (var db = new ReplaysContext())
-            {
-                foreach (var r in toAdd)
-                {
-                    var existing = db.Replays.FirstOrDefault(x => x.Server == r.Server && x.Timestamp == r.Timestamp);
-                    if (existing != null)
-                    {
-                        db.Replays.Remove(existing);
-                    }
-                }
-
-                db.Replays.AddRange(toAdd);
-                db.SaveChanges();
-            }
-        }
     }
 }

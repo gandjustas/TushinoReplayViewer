@@ -16,6 +16,14 @@ namespace Tushino
             new [] { "GUER", "зеленые" },
             new [] { "CIV", "гражданские" },
         };
+        static readonly string[] winnerMessages = new[] { "Winner: ", "Победа: " };
+        static readonly string[] winnerAdminMessages = new[] {
+            "Победа синих.",
+            "Победа красных.",
+            "Победа зелёных.",
+            "Победа гражданских."
+        };
+
         ReplayParser reader;
         Dictionary<int, Unit> units;
         Replay result;
@@ -146,14 +154,29 @@ namespace Tushino
 
         private void ParseInfo(string v)
         {
-            if (v.StartsWith("Winner: ")) //Победа
+            foreach (var winnerMessage in winnerMessages)
             {
-                var side = v.Substring("Winner: ".Length);
-                var sideIndex = Array.FindIndex(sides, s => s[0] == side);
-                result.WinnerSide = sideIndex;
+                if (v.StartsWith(winnerMessage)) //Победа
+                {
+                    var side = v.Substring(winnerMessage.Length);
+                    var sideIndex = Array.FindIndex(sides, s => s[0] == side);
+                    result.WinnerSide = sideIndex;
+                }
             }
 
-            else if (v.StartsWith("КС: ")) //КС
+            if (v.StartsWith("Миссия завершена админом:")) // Завершено админом
+            {
+                foreach (var winnerMessage in winnerAdminMessages)
+                {
+                    if (v.Contains(winnerMessage)) //Победа
+                    {
+                        result.WinnerSide = Array.IndexOf(winnerAdminMessages, winnerMessage);
+                    }
+                }
+            }
+
+
+            if (v.StartsWith("КС: ")) //КС
             {
                 var commanders = v.Substring("КС: ".Length).Split(';');
                 if (commanders.Last().Trim().StartsWith("ИА: ")) //Admin
@@ -183,7 +206,6 @@ namespace Tushino
                     }
                 }
             }
-
         }
 
         private void PasreFrame0()

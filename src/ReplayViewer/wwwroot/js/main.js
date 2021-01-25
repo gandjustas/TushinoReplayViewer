@@ -592,6 +592,7 @@ function loadReplay(qs, hash) {
                 maxZoom: params['new'] ? 7 : 7,
                 continuousWorld: true,
                 noWrap: true,
+                bounds: [[0, 0], MapSize],
                 errorTileUrl: '/images/blank.png',
                 attribution: "Online replay viewer by <a href='http://серьёзныеигры.рф/index.php?subaction=userinfo&user=Stolen' target='_blank'>Stolen</a> and <a href='http://серьёзныеигры.рф/index.php?subaction=userinfo&user=hitman' target='_blank'>hitman</a> "
             }).addTo(map);
